@@ -13,14 +13,26 @@ const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(null)
   const authData = useContext(AuthContext)
 
-  // useEffect(() => {
-  //   if(authData){
-  //     const loggedInUser = localStorage.getItem('loggedInUser')
-  //     if(loggedInUser){
-  //       setUser(loggedInUser.role)
-  //     }
-  //   }
-  // }, [authData])
+  useEffect(() => {
+    const savedUser = localStorage.getItem('loggedInUser')
+    if(savedUser){
+      const userData = JSON.parse(savedUser)
+      setUser(userData.role)
+      if(userData.role === 'employee'){
+        if(userData.data){
+          setLoggedInUser(userData.data)
+        } else if(authData?.employees && userData.id){
+          // Restore employee from authData if data not in localStorage
+          const employee = authData.employees.find(e => e.id === userData.id)
+          if(employee){
+            setLoggedInUser(employee)
+            // Update localStorage with full employee data
+            localStorage.setItem('loggedInUser', JSON.stringify({role: 'employee', data: employee, id: employee.id}))
+          }
+        }
+      }
+    }
+  }, [authData])
 
 
   const handleLogin = (email, password) => {
@@ -28,17 +40,16 @@ const App = () => {
       setUser('admin')
       localStorage.setItem('loggedInUser', JSON.stringify({role: 'admin'}))
      
-    } else if (authData) {
-      const employee = authData.employees.find((e) => email == e.email && e.password == password)
+    } else if (authData?.employees) {
+      const employee = authData.employees.find((e) => e.email === email && e.password === password)
       if(employee){
-        console.log('Employee credentials matched:', employee)
-        setUser(employee)
         setLoggedInUser(employee)
-        localStorage.setItem('loggedInUser', JSON.stringify( {role: 'employee'}))
+        setUser('employee')
+        localStorage.setItem('loggedInUser', JSON.stringify({role: 'employee',data: employee,id: employee.id}))
+      } else {
+        alert("Invalid Credentials")
       }
-   
-    } 
-    else {
+    } else {
       alert("Invalid Credentials")
     }
   }
@@ -52,7 +63,8 @@ const App = () => {
     <>
 
       {!user ? <Login handleLogin={handleLogin} />: ''}
-      {user == 'admin' ? <AdminDashboard/> : <EmployeeDashboard data={loggedInUser}/>}
+      {user === 'admin' && <AdminDashboard/>}
+      {user === 'employee' && loggedInUser && <EmployeeDashboard data={loggedInUser}/>}
 
 
 
